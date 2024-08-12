@@ -36,6 +36,15 @@ typedef struct _ImxWrappedDmaBuffer ImxWrappedDmaBuffer;
 
 #define IMX_DMA_BUFFER_PADDING 8
 
+/** @brief Allocator memory statistics */
+struct imx_allocator_stats {
+	size_t total_allocated; /*!< Total allocated memory */
+	size_t total_freed;     /*!< Total freed memory */
+	size_t current_usage;   /*!< Current memory usage */
+	size_t peak_usage;      /*!< Peak memory usage */
+	size_t alloc_cnt;       /*!< Number of allocations */
+	size_t dealloc_cnt;     /*!< Number of deallocations */
+};
 
 /* ImxDmaBuffer:
  *
@@ -57,7 +66,7 @@ struct _ImxDmaBuffer
  *
  * The vfuncs typically are not called directly from the outside, but by using the corresponding
  * imx_dma_buffer_* functions() instead. See the documentation of these functions for more details
- * about what the vfuncs do. 
+ * about what the vfuncs do.
  */
 struct _ImxDmaBufferAllocator
 {
@@ -77,9 +86,11 @@ struct _ImxDmaBufferAllocator
 
 	size_t (*get_size)(ImxDmaBufferAllocator *allocator, ImxDmaBuffer *buffer);
 
-	void* _reserved[IMX_DMA_BUFFER_PADDING - 2];
-};
+    void * stat;   // Pointer to allocator-specific statistics structure
+    struct ImxAllocatorStats (*get_stats)(ImxDmaBufferAllocator * allocator);
 
+    void * _reserved[IMX_DMA_BUFFER_PADDING - 4];
+};
 
 /* Creates a new DMA buffer allocator.
  *
@@ -91,15 +102,32 @@ struct _ImxDmaBufferAllocator
  *        the allocator succeeds, the integer is not modified.
  * @return Pointer to the newly created DMA allocator, or NULL in case of an error.
  */
-ImxDmaBufferAllocator* imx_dma_buffer_allocator_new(int *error);
+ImxDmaBufferAllocator * imx_dma_buffer_allocator_new(int * error);
 
-/* Destroys a previously created DMA buffer allocator.
+/**
+ * @brief Destroys a previously created DMA buffer allocator.
  *
- * After this call, the allocator is fully destroyed, and must not be used anymore.
- * Also, any existing DMA buffers that have been allocated by this allocator will be
- * deallocated.
+ * @note It calls the allocator's destroy() vfunc, which is responsible for freeing,
+ *       deallocating, and cleaning up any resources that the allocator might have.
+ *       It must also free the allocator structure itself by calling imx_dma_buffer_allocator_free().
+ *
+ * @warning After this call, the allocator is fully destroyed, and must not be used anymore.
+ *          Also, any existing DMA buffers that have been allocated by this allocator will be
+ *          deallocated.
+ *
+ * @param[in] allocator The DMA buffer allocator to destroy.
  */
-void imx_dma_buffer_allocator_destroy(ImxDmaBufferAllocator *allocator);
+void imx_dma_buffer_allocator_destroy(ImxDmaBufferAllocator * allocator);
+
+/**
+ * @brief Frees the memory allocated for the DMA buffer allocator.
+ *
+ * @warning It does not deallocate the DMA buffers allocated by the allocator.
+ *          It just frees the structure itself.
+ *
+ * @param[in] allocator The DMA buffer allocator to free.
+ */
+void imx_dma_buffer_allocator_free(ImxDmaBufferAllocator * allocator);
 
 /* Allocates a DMA buffer.
  *
@@ -248,6 +276,21 @@ int imx_dma_buffer_get_fd(ImxDmaBuffer *buffer);
  */
 size_t imx_dma_buffer_get_size(ImxDmaBuffer *buffer);
 
+/**
+ * @brief Increment the allocated memory statistics.
+ *
+ * @param[in] allocator The allocator to increment the statistics for.
+ * @param[in] size      The size of the allocation.
+ */
+void imx_increment_alloc_stats(ImxDmaBufferAllocator * allocator, size_t size);
+
+/**
+ * @brief Decrement the allocated memory statistics.
+ *
+ * @param[in] allocator The allocator to decrement the statistics for.
+ * @param[in] size The size of the deallocation.
+ */
+void imx_decrement_alloc_stats(ImxDmaBufferAllocator * allocator, size_t size);
 
 /* ImxWrappedDmaBuffer:
  *
@@ -283,6 +326,5 @@ void imx_dma_buffer_init_wrapped_buffer(ImxWrappedDmaBuffer *buffer);
 #ifdef __cplusplus
 }
 #endif
-
 
 #endif /* IMXDMABUFFER_H */

@@ -20,7 +20,7 @@ int main()
 }
 """
 def check_compiler_flag(conf, flag, lang):
-	return conf.check(fragment = c_cflag_check_code, mandatory = 0, execute = 0, define_ret = 0, msg = 'Checking for compiler switch %s' % flag, cxxflags = conf.env[lang + 'FLAGS'] + [flag], okmsg = 'yes', errmsg = 'no')  
+	return conf.check(fragment = c_cflag_check_code, mandatory = 0, execute = 0, define_ret = 0, msg = 'Checking for compiler switch %s' % flag, cxxflags = conf.env[lang + 'FLAGS'] + [flag], okmsg = 'yes', errmsg = 'no')
 def check_compiler_flags_2(conf, cflags, ldflags, msg):
 	Logs.pprint('NORMAL', msg)
 	return conf.check(fragment = c_cflag_check_code, mandatory = 0, execute = 0, define_ret = 0, msg = 'Checking if building with these flags works', cxxflags = cflags, ldflags = ldflags, okmsg = 'yes', errmsg = 'no')
@@ -50,6 +50,7 @@ def add_compiler_flags(conf, env, flags, lang, compiler, uselib = ''):
 def options(opt):
 	opt.add_option('--enable-debug', action = 'store_true', default = False, help = 'enable debug build [default: disabled]')
 	opt.add_option('--enable-static', action = 'store_true', default = False, help = 'build static library [default: build shared library]')
+	opt.add_option('--enable-alloc-stats', action = 'store_true', default = False, help = 'enable allocation statistics [default: disabled]')
 	opt.add_option('--imx-linux-headers-path', action='store', default='', help='path to i.MX linux headers (where linux/ipu.h etc. can be found)')
 	opt.add_option('--with-dma-heap-allocator', action='store', default = 'auto', help = 'build with dma-heap allocator support (valid values: yes/no/auto)')
 	opt.add_option('--dma-heap-device-node-path', action='store', default='/dev/dma_heap/linux,cma', help='path to dma-heap device node')
@@ -95,6 +96,7 @@ def configure(conf):
 	conf.env['EXTRA_USELIBS'] = []
 	conf.env['EXTRA_SOURCE_FILES'] = []
 
+	conf.define('IMXDMABUFFER_ALLOC_STATS_ENABLED', 1 if conf.options.enable_alloc_stats else 0)
 
 	# i.MX linux header checks and flags
 	if not conf.options.imx_linux_headers_path:

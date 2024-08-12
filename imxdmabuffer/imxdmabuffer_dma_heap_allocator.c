@@ -108,6 +108,7 @@ static ImxDmaBuffer* imx_dma_buffer_dma_heap_allocator_allocate(ImxDmaBufferAllo
 		imx_dma_heap_allocator->fd_flags,
 		error
 	);
+
 	if (dmabuf_fd < 0)
 		return NULL;
 
@@ -121,6 +122,18 @@ static ImxDmaBuffer* imx_dma_buffer_dma_heap_allocator_allocate(ImxDmaBufferAllo
 
 	/* Allocate system memory for the DMA buffer structure, and initialize its fields. */
 	imx_dma_heap_buffer = (ImxDmaBufferDmaHeapBuffer *)malloc(sizeof(ImxDmaBufferDmaHeapBuffer));
+
+	if (imx_dma_heap_buffer == NULL)
+	{
+		if (error != NULL)
+		{
+			close(dmabuf_fd);
+			*error = ENOMEM;
+		}
+
+		return NULL;
+	}
+
 	imx_dma_heap_buffer->parent.allocator = allocator;
 	imx_dma_heap_buffer->dmabuf_fd = dmabuf_fd;
 	imx_dma_heap_buffer->physical_address = physical_address;
@@ -129,7 +142,11 @@ static ImxDmaBuffer* imx_dma_buffer_dma_heap_allocator_allocate(ImxDmaBufferAllo
 	imx_dma_heap_buffer->mapping_refcount = 0;
 	imx_dma_heap_buffer->sync_started = 0;
 
-	return (ImxDmaBuffer *)imx_dma_heap_buffer;
+#ifdef IMXDMABUFFER_ALLOC_STATS_ENABLED
+    imx_increment_alloc_stats(allocator, size);
+#endif
+
+    return (ImxDmaBuffer *)imx_dma_heap_buffer;
 }
 
 
@@ -151,7 +168,12 @@ static void imx_dma_buffer_dma_heap_allocator_deallocate(ImxDmaBufferAllocator *
 	}
 
 	close(imx_dma_heap_buffer->dmabuf_fd);
-	free(imx_dma_heap_buffer);
+
+#ifdef IMXDMABUFFER_ALLOC_STATS_ENABLED
+    imx_decrement_alloc_stats(allocator, imx_dma_heap_buffer->size);
+#endif
+
+    free(imx_dma_heap_buffer);
 }
 
 
@@ -367,6 +389,17 @@ ImxDmaBufferAllocator* imx_dma_buffer_dma_heap_allocator_new(
 	ImxDmaBufferDmaHeapAllocator *imx_dma_heap_allocator;
 
 	imx_dma_heap_allocator = (ImxDmaBufferDmaHeapAllocator *)malloc(sizeof(ImxDmaBufferDmaHeapAllocator));
+
+	if (imx_dma_heap_allocator == NULL)
+	{
+		if (error != NULL)
+		{
+			*error = ENOMEM;
+		}
+
+		return NULL;
+	}
+
 	imx_dma_heap_allocator->parent.destroy = imx_dma_buffer_dma_heap_allocator_destroy;
 	imx_dma_heap_allocator->parent.allocate = imx_dma_buffer_dma_heap_allocator_allocate;
 	imx_dma_heap_allocator->parent.deallocate = imx_dma_buffer_dma_heap_allocator_deallocate;
@@ -418,6 +451,12 @@ ImxDmaBufferAllocator* imx_dma_buffer_dma_heap_allocator_new_from_fd(
 	assert(dma_heap_fd > 0);
 
 	imx_dma_heap_allocator = (ImxDmaBufferDmaHeapAllocator *)malloc(sizeof(ImxDmaBufferDmaHeapAllocator));
+
+	if (imx_dma_heap_allocator == NULL)
+	{
+		return NULL;
+	}
+
 	imx_dma_heap_allocator->parent.destroy = imx_dma_buffer_dma_heap_allocator_destroy;
 	imx_dma_heap_allocator->parent.allocate = imx_dma_buffer_dma_heap_allocator_allocate;
 	imx_dma_heap_allocator->parent.deallocate = imx_dma_buffer_dma_heap_allocator_deallocate;

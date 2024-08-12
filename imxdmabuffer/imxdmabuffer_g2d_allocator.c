@@ -98,7 +98,11 @@ static ImxDmaBuffer* imx_dma_buffer_g2d_allocator_allocate(ImxDmaBufferAllocator
 	imx_g2d_buffer->aligned_physical_address = (imx_physical_address_t)IMX_DMA_BUFFER_ALIGN_VAL_TO((imx_physical_address_t)(imx_g2d_buffer->buf->buf_paddr), alignment);
 
 finish:
-	return (ImxDmaBuffer *)imx_g2d_buffer;
+#ifdef IMXDMABUFFER_ALLOC_STATS_ENABLED
+    imx_increment_alloc_stats(allocator, size);
+#endif
+
+    return (ImxDmaBuffer *)imx_g2d_buffer;
 
 cleanup:
 	free(imx_g2d_buffer);
@@ -118,7 +122,11 @@ static void imx_dma_buffer_g2d_allocator_deallocate(ImxDmaBufferAllocator *alloc
 
 	g2d_free(imx_g2d_buffer->buf);
 
-	free(imx_g2d_buffer);
+#ifdef IMXDMABUFFER_ALLOC_STATS_ENABLED
+    imx_decrement_alloc_stats(allocator, imx_g2d_buffer->actual_size);
+#endif
+
+    free(imx_g2d_buffer);
 }
 
 
