@@ -7,8 +7,8 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 
-#include <linux/dma-buf.h>
-#include <linux/dma-heap.h>
+#include <include/uapi/linux/dma-buf.h>
+#include <include/uapi/linux/dma-heap.h>
 
 #include <imxdmabuffer_config.h>
 #include "imxdmabuffer.h"
@@ -388,7 +388,7 @@ ImxDmaBufferAllocator* imx_dma_buffer_dma_heap_allocator_new(
 {
 	ImxDmaBufferDmaHeapAllocator *imx_dma_heap_allocator;
 
-	imx_dma_heap_allocator = (ImxDmaBufferDmaHeapAllocator *)malloc(sizeof(ImxDmaBufferDmaHeapAllocator));
+	imx_dma_heap_allocator = (ImxDmaBufferDmaHeapAllocator *)calloc(1, sizeof(ImxDmaBufferDmaHeapAllocator));
 
 	if (imx_dma_heap_allocator == NULL)
 	{

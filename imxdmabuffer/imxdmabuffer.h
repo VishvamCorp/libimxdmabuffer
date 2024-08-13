@@ -36,8 +36,18 @@ typedef struct _ImxWrappedDmaBuffer ImxWrappedDmaBuffer;
 
 #define IMX_DMA_BUFFER_PADDING 8
 
+typedef enum {
+    IMX_DMA_BUFFER_TYPE_DEFAULT = 0,
+    IMX_DMA_BUFFER_TYPE_DMA_HEAP,
+    IMX_DMA_BUFFER_TYPE_ION,
+    IMX_DMA_BUFFER_TYPE_DWL,
+    IMX_DMA_BUFFER_TYPE_IPU,
+    IMX_DMA_BUFFER_TYPE_G2D,
+    IMX_DMA_BUFFER_TYPE_PXP,
+} ImxDmaBufferType_t;
+
 /** @brief Allocator memory statistics */
-struct imx_allocator_stats {
+struct ImxAllocatorStats {
 	size_t total_allocated; /*!< Total allocated memory */
 	size_t total_freed;     /*!< Total freed memory */
 	size_t current_usage;   /*!< Current memory usage */
@@ -102,7 +112,7 @@ struct _ImxDmaBufferAllocator
  *        the allocator succeeds, the integer is not modified.
  * @return Pointer to the newly created DMA allocator, or NULL in case of an error.
  */
-ImxDmaBufferAllocator * imx_dma_buffer_allocator_new(int * error);
+ImxDmaBufferAllocator * imx_dma_buffer_allocator_new(ImxDmaBufferType_t type, int * error);
 
 /**
  * @brief Destroys a previously created DMA buffer allocator.

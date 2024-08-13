@@ -1,5 +1,7 @@
 #include <assert.h>
 #include <string.h>
+#include <stdlib.h>
+
 #include <imxdmabuffer_config.h>
 #include "imxdmabuffer.h"
 #include "imxdmabuffer_priv.h"
@@ -30,43 +32,61 @@
 
 static struct ImxAllocatorStats _imx_dma_buffer_allocator_get_stats(ImxDmaBufferAllocator * allocator);
 
-ImxDmaBufferAllocator* imx_dma_buffer_allocator_new(int *error)
+ImxDmaBufferAllocator* imx_dma_buffer_allocator_new(ImxDmaBufferType_t type, int *error)
 {
 	ImxDmaBufferAllocator* allocator = NULL;
 
+    switch (type) {
+        case IMX_DMA_BUFFER_TYPE_DEFAULT:
 #ifdef IMXDMABUFFER_DMA_HEAP_ALLOCATOR_ENABLED
-	allocator = imx_dma_buffer_dma_heap_allocator_new(
-		-1,
-		IMX_DMA_BUFFER_DMA_HEAP_ALLOCATOR_DEFAULT_HEAP_FLAGS,
-		IMX_DMA_BUFFER_DMA_HEAP_ALLOCATOR_DEFAULT_FD_FLAGS,
-		error
-	);
+        case IMX_DMA_BUFFER_TYPE_DMA_HEAP:
+            allocator = imx_dma_buffer_dma_heap_allocator_new(
+                -1,
+                IMX_DMA_BUFFER_DMA_HEAP_ALLOCATOR_DEFAULT_HEAP_FLAGS,
+                IMX_DMA_BUFFER_DMA_HEAP_ALLOCATOR_DEFAULT_FD_FLAGS,
+                error
+            );
+            break;
 #endif
 #ifdef IMXDMABUFFER_ION_ALLOCATOR_ENABLED
-	allocator = imx_dma_buffer_ion_allocator_new(
-		IMX_DMA_BUFFER_ION_ALLOCATOR_DEFAULT_ION_FD,
-		IMX_DMA_BUFFER_ION_ALLOCATOR_DEFAULT_HEAP_ID_MASK,
-		IMX_DMA_BUFFER_ION_ALLOCATOR_DEFAULT_HEAP_FLAGS,
-		error
-	);
+        case IMX_DMA_BUFFER_TYPE_ION:
+            allocator = imx_dma_buffer_ion_allocator_new(
+                IMX_DMA_BUFFER_ION_ALLOCATOR_DEFAULT_ION_FD,
+                IMX_DMA_BUFFER_ION_ALLOCATOR_DEFAULT_HEAP_ID_MASK,
+                IMX_DMA_BUFFER_ION_ALLOCATOR_DEFAULT_HEAP_FLAGS,
+                error
+            );
+            break;
 #endif
 #ifdef IMXDMABUFFER_DWL_ALLOCATOR_ENABLED
-	allocator = imx_dma_buffer_dwl_allocator_new(error);
+        case IMX_DMA_BUFFER_TYPE_DWL:
+            allocator = imx_dma_buffer_dwl_allocator_new(error);
+            break;
 #endif
 #ifdef IMXDMABUFFER_IPU_ALLOCATOR_ENABLED
-	allocator = imx_dma_buffer_ipu_allocator_new(IMX_DMA_BUFFER_IPU_ALLOCATOR_DEFAULT_IPU_FD, error);
+        case IMX_DMA_BUFFER_TYPE_IPU:
+        	allocator = imx_dma_buffer_ipu_allocator_new(IMX_DMA_BUFFER_IPU_ALLOCATOR_DEFAULT_IPU_FD, error);
+            break;
 #endif
 #ifdef IMXDMABUFFER_G2D_ALLOCATOR_ENABLED
-	allocator = imx_dma_buffer_g2d_allocator_new();
+        case IMX_DMA_BUFFER_TYPE_G2D:
+        	allocator = imx_dma_buffer_g2d_allocator_new();
+            break;
 #endif
 #ifdef IMXDMABUFFER_PXP_ALLOCATOR_ENABLED
-	allocator = imx_dma_buffer_pxp_allocator_new(IMX_DMA_BUFFER_PXP_ALLOCATOR_DEFAULT_PXP_FD, error);
+        case IMX_DMA_BUFFER_TYPE_PXP:
+        	allocator = imx_dma_buffer_pxp_allocator_new(IMX_DMA_BUFFER_PXP_ALLOCATOR_DEFAULT_PXP_FD, error);
+            break;
 #endif
+
+        default:
+            break;
+    };
 
 #ifdef IMXDMABUFFER_ALLOC_STATS_ENABLED
     if (allocator)
 	{
-        allocator->stat = calloc(1, sizeof(ImxAllocatorStats));
+        allocator->stat = calloc(1, sizeof(struct ImxAllocatorStats));
         allocator->get_stats = _imx_dma_buffer_allocator_get_stats;
     }
 #endif
@@ -190,26 +210,28 @@ size_t imx_dma_buffer_get_size(ImxDmaBuffer *buffer)
 
 void imx_increment_alloc_stats(ImxDmaBufferAllocator * allocator, size_t size)
 {
-	if (allocator == NULL || size = 0)
+	if (allocator == NULL || size == 0)
         return;
 
 
 	if (allocator->stat != NULL)
 	{
-		allocator->stat->total_allocated += size;
+		struct ImxAllocatorStats *stat = allocator->stat;
 
-        if (allocator->stat->total_allocated > allocator->stat->total_freed)
+        stat->total_allocated += size;
+
+        if (stat->total_allocated > stat->total_freed)
 		{
-            allocator->stat->current_usage = allocator->stat->total_allocated - allocator->stat->total_freed;
+            stat->current_usage = stat->total_allocated - stat->total_freed;
 		} else {
-			allocator->stat->current_usage = 0;
+			stat->current_usage = 0;
 		}
 
-		allocator->stat->alloc_cnt++;
+		stat->alloc_cnt++;
 
-		if (allocator->stat->current_usage > allocator->stat->peak_usage)
+		if (stat->current_usage > stat->peak_usage)
 		{
-			allocator->stat->peak_usage = allocator->stat->current_usage;
+			stat->peak_usage = stat->current_usage;
 		}
 	}
 }
@@ -217,21 +239,23 @@ void imx_increment_alloc_stats(ImxDmaBufferAllocator * allocator, size_t size)
 
 void imx_decrement_alloc_stats(ImxDmaBufferAllocator * allocator, size_t size)
 {
-	if (allocator == NULL || size = 0)
+	if (allocator == NULL || size == 0)
 		return;
 
 	if (allocator->stat != NULL)
 	{
-		allocator->stat->total_freed += size;
+	    struct ImxAllocatorStats *stat = allocator->stat;
 
-		if (allocator->stat->total_allocated > allocator->stat->total_freed)
+        stat->total_freed += size;
+
+		if (stat->total_allocated > stat->total_freed)
 		{
-			allocator->stat->current_usage = allocator->stat->total_allocated - allocator->stat->total_freed;
+			stat->current_usage = stat->total_allocated - stat->total_freed;
 		} else {
-			allocator->stat->current_usage = 0;
+			stat->current_usage = 0;
 		}
 
-		allocator->stat->dealloc_cnt++;
+		stat->dealloc_cnt++;
 	}
 }
 
@@ -308,6 +332,8 @@ static ImxDmaBufferAllocator wrapped_dma_buffer_allocator =
 	wrapped_dma_buffer_allocator_get_physical_address,
 	wrapped_dma_buffer_allocator_get_fd,
 	wrapped_dma_buffer_allocator_get_size,
+    NULL, /* no stats for wrapped allocator */
+    NULL, /* no stats for wrapped allocator */
 	{ 0, }
 };
 
@@ -324,7 +350,7 @@ static struct ImxAllocatorStats _imx_dma_buffer_allocator_get_stats(ImxDmaBuffer
 
     if (allocator != NULL && allocator->stat != NULL)
 	{
-        stats = *allocator->stat;
+        memcpy(&stats, allocator->stat, sizeof(struct ImxAllocatorStats));
     }
 
     return stats;

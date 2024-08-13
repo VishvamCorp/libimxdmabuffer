@@ -97,7 +97,6 @@ static ImxDmaBuffer* imx_dma_buffer_g2d_allocator_allocate(ImxDmaBufferAllocator
 	imx_g2d_buffer->aligned_virtual_address = (uint8_t *)IMX_DMA_BUFFER_ALIGN_VAL_TO((uint8_t *)(imx_g2d_buffer->buf->buf_vaddr), alignment);
 	imx_g2d_buffer->aligned_physical_address = (imx_physical_address_t)IMX_DMA_BUFFER_ALIGN_VAL_TO((imx_physical_address_t)(imx_g2d_buffer->buf->buf_paddr), alignment);
 
-finish:
 #ifdef IMXDMABUFFER_ALLOC_STATS_ENABLED
     imx_increment_alloc_stats(allocator, size);
 #endif
@@ -106,8 +105,8 @@ finish:
 
 cleanup:
 	free(imx_g2d_buffer);
-	imx_g2d_buffer = NULL;
-	goto finish;
+
+    return NULL;
 }
 
 
@@ -204,7 +203,13 @@ static size_t imx_dma_buffer_g2d_allocator_get_size(ImxDmaBufferAllocator *alloc
 
 ImxDmaBufferAllocator* imx_dma_buffer_g2d_allocator_new(void)
 {
-	ImxDmaBufferG2dAllocator *imx_g2d_allocator = (ImxDmaBufferG2dAllocator *)malloc(sizeof(ImxDmaBufferG2dAllocator));
+	ImxDmaBufferG2dAllocator *imx_g2d_allocator = (ImxDmaBufferG2dAllocator *)calloc(1, sizeof(ImxDmaBufferG2dAllocator));
+
+    if (imx_g2d_allocator == NULL)
+    {
+        return NULL;
+    }
+
 	imx_g2d_allocator->parent.destroy = imx_dma_buffer_g2d_allocator_destroy;
 	imx_g2d_allocator->parent.allocate = imx_dma_buffer_g2d_allocator_allocate;
 	imx_g2d_allocator->parent.deallocate = imx_dma_buffer_g2d_allocator_deallocate;
