@@ -22,7 +22,7 @@ file(GLOB LIB_HEADERS
         ${CMAKE_CURRENT_BINARY_DIR}/imxdmabuffer_config.h)
 
 # OPTIONS
-option(ENABLE_ALLOC_STATS_ENABLE "Enable allocation statistics" OFF)
+option(ENABLE_ALLOC_STATS "Enable allocation statistics" OFF)
 option(IMX_LINUX_HEADERS_PATH "Path to i.MX linux headers" "")
 option(WITH_DMA_HEAP_ALLOCATOR "Build with dma-heap allocator support" ON)
 option(DMA_HEAP_UNCACHED_MEMORY "dma-heap allocator allocates uncached DMA memory" OFF)
@@ -31,7 +31,7 @@ option(G2D_INCLUDES "Path to the directory where the g2d.h header is" "/usr/incl
 option(G2D_LIBS "Path to the directory where the g2d library is" "/usr/lib")
 
 # Parse OPTIONS
-if(ENABLE_ALLOC_STATS_ENABLE)
+if(ENABLE_ALLOC_STATS)
     set(IMXDMABUFFER_ALLOC_STATS_ENABLED TRUE)
     message(STATUS "Allocation statistics are enabled")
 else()
@@ -66,11 +66,19 @@ if (DEFINED ENV{IMX_SYS_ROOT})
     set(IMX_SYS_ROOT $ENV{IMX_SYS_ROOT})
     set(IMX_OS_HEADERS_PATH ${IMX_SYS_ROOT}/usr/include)
 
-    set(G2D_INCLUDES ${IMX_SYS_ROOT}/usr/include)
-    set(G2D_LIBS ${IMX_SYS_ROOT}/usr/lib)
+    if(NOT G2D_INCLUDES)
+        set(G2D_INCLUDES /usr/include)
+    endif()
+
+    if(NOT G2D_LIBS)
+        set(G2D_LIBS /usr/lib)
+    endif()
+
+    set(G2D_INCLUDES ${IMX_SYS_ROOT}${G2D_INCLUDES})
+    set(G2D_LIBS ${IMX_SYS_ROOT}${G2D_LIBS})
 
     include_directories(${IMX_OS_HEADERS_PATH})
-    link_directories(${IG2D_LIBSMX_SYS_ROOT}/usr/lib)
+    link_directories(${G2D_LIBS} ${IMX_SYS_ROOT}/usr/lib/aarch64-linux-gnu)
 
     message(STATUS "IMX_OS_HEADERS_PATH is set to ${IMX_OS_HEADERS_PATH}")
 endif()
@@ -112,6 +120,9 @@ if(WITH_G2D_ALLOCATOR)
     check_file_in_paths(G2D_PATH g2d.h ${G2D_INCLUDES})
     check_file_in_paths(G2D_LIB_PATH libg2d.so ${G2D_LIBS})
 
+    message(STATUS "G2D headers are located in ${G2D_INCLUDES}")
+    message(STATUS "G2D library is located in ${G2D_LIBS}")
+
     message(STATUS "G2D allocator is enabled")
     set(IMXDMABUFFER_G2D_ALLOCATOR_ENABLED TRUE)
 
@@ -138,6 +149,10 @@ configure_file(
 )
 
 target_include_directories(${LIB_NAME} PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+
+if (IMXDMABUFFER_G2D_ALLOCATOR_ENABLED)
+    target_link_libraries(${LIB_NAME} g2d)
+endif()
 
 set_target_properties(${LIB_NAME} PROPERTIES
     VERSION ${IMXDMABUFFER_VERSION}
@@ -176,7 +191,7 @@ set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Nikita Bulaev <nikita.bulaev@vishwamcorp.co
 set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 
-if (NOT ENABLE_ALLOC_STATS_ENABLE)
+if (NOT ENABLE_ALLOC_STATS)
     set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${BUILD_TYPE}")
 else()
     set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${BUILD_TYPE}-alloc-stats")
