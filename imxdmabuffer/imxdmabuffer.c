@@ -344,7 +344,7 @@ void imx_dma_buffer_init_wrapped_buffer(ImxWrappedDmaBuffer *buffer)
 	buffer->parent.allocator = &wrapped_dma_buffer_allocator;
 }
 
-static struct ImxAllocatorStats _imx_dma_buffer_allocator_get_stats(ImxDmaBufferAllocator * allocator)
+static __maybe_unused struct ImxAllocatorStats _imx_dma_buffer_allocator_get_stats(ImxDmaBufferAllocator *allocator)
 {
 	struct ImxAllocatorStats stats = {0};
 

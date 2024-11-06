@@ -10,6 +10,19 @@
 extern "C" {
 #endif
 
+#ifndef __GNUC__
+    #define __maybe_unused
+    #define __deprecated
+#else
+    #ifndef __maybe_unused
+        #define __maybe_unused __attribute__((unused))
+    #endif
+
+    #ifndef __deprecated
+        #define __deprecated __attribute__((deprecated))
+    #endif
+#endif
+
 
 /* ImxDmaBufferMappingFlags: Flags for the ImxVpuDMABufferAllocator's
  * map vfuncs. These flags can be bitwise-OR combined. */

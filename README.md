@@ -68,7 +68,7 @@ be used on these by adding the following lines to the kernel configuration:
     CONFIG_ION_CMA_HEAP=y
 
 
-Building and installing
+Building and installing (Waf build system)
 -----------------------
 
 This project uses the [waf meta build system](https://code.google.com/p/waf/).
@@ -103,6 +103,29 @@ Finally, to install, run:
 This will install the headers in `$PREFIX/include/imxdmabuffer/` , the
 libraries in `$PREFIX/lib/` , and generate a pkg-config .pc file, which is
 placed in `$PREFIX/lib/pkgconfig/` .
+
+Building and installing (CMake build system)
+--------------------------------------------
+**Note:** Current CMake build supports only DMA-Heap and G2D allocators.
+
+This project also supports the CMake build system. To build and install the
+library using CMake, follow these steps:
+
+    mkdir build
+    cd build
+    cmake ../ && make
+
+To install the library, run:
+
+    make install
+
+To build DEB package, run:
+
+    make deb
+
+or
+
+    cpack -G DEB
 
 
 Notes about dma-heap allocator and imx kernel version

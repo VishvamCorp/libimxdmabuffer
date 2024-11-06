@@ -59,9 +59,17 @@ static ImxDmaBuffer* imx_dma_buffer_g2d_allocator_allocate(ImxDmaBufferAllocator
 {
 	size_t actual_size;
 	ImxDmaBufferG2dBuffer *imx_g2d_buffer;
-	ImxDmaBufferG2dAllocator *imx_g2d_allocator = (ImxDmaBufferG2dAllocator *)allocator;
 
-	assert(imx_g2d_allocator != NULL);
+#ifndef NDEBUG
+	assert(allocator != NULL);
+#else
+	if (allocator == NULL)
+	{
+		if (error != NULL)
+			*error = EINVAL;
+		return NULL;
+	}
+#endif
 
 	/* The G2D allocator does not have a parameter for alignment, so we resort to a trick.
 	 * We allocate some extra bytes. Then, once allocated, we take the returned physical
@@ -113,16 +121,30 @@ cleanup:
 static void imx_dma_buffer_g2d_allocator_deallocate(ImxDmaBufferAllocator *allocator, ImxDmaBuffer *buffer)
 {
 	ImxDmaBufferG2dBuffer *imx_g2d_buffer = (ImxDmaBufferG2dBuffer *)buffer;
+
+#ifndef NDEBUG
 	ImxDmaBufferG2dAllocator *imx_g2d_allocator = (ImxDmaBufferG2dAllocator *)allocator;
 
 	assert(imx_g2d_allocator != NULL);
 	assert(imx_g2d_buffer != NULL);
 	assert(imx_g2d_buffer->buf != 0);
+#else
+	if (imx_g2d_buffer == NULL || imx_g2d_buffer->buf == 0)
+		return;
+#endif
 
 	g2d_free(imx_g2d_buffer->buf);
 
 #ifdef IMXDMABUFFER_ALLOC_STATS_ENABLED
-    imx_decrement_alloc_stats(allocator, imx_g2d_buffer->actual_size);
+#ifdef NDEBUG
+	if (allocator != NULL)
+    	imx_decrement_alloc_stats(allocator, imx_g2d_buffer->actual_size);
+#else
+	assert(allocator != NULL);
+	imx_decrement_alloc_stats(allocator, imx_g2d_buffer->actual_size);
+#endif
+#else
+	IMX_DMA_BUFFER_UNUSED_PARAM(allocator);
 #endif
 
     free(imx_g2d_buffer);
